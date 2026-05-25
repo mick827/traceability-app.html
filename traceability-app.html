@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>製造記録管理システム｜鰹節工場</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1A1410;
+    --surface: #2E2420;
+    --surface2: #3A2C26;
+    --border: #4A3830;
+    --text: #F7EFEA;
+    --sub: #C9B8AE;
+    --muted: #807178;
+    --accent: #E8A09A;
+    --olive: #7A8F68;
+    --gold: #C8A96E;
+    --danger: #E87A6A;
+    --success: #6AB887;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title { font-size:18px; font-weight:700; letter-spacing:0.04em; }
+  .header-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  .header-badge {
+    font-size:11px; font-weight:700; letter-spacing:0.12em;
+    color:var(--gold); border:1px solid rgba(200,169,110,0.4);
+    background:rgba(200,169,110,0.1); padding:4px 14px; border-radius:20px;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display:flex; gap:0;
+    border-bottom:1px solid var(--border);
+    background:var(--surface);
+    padding: 0 32px;
+  }
+  .tab {
+    padding:14px 28px; font-size:14px; font-weight:500;
+    cursor:pointer; color:var(--muted);
+    border-bottom:2px solid transparent;
+    transition:all 0.2s;
+  }
+  .tab:hover { color:var(--sub); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+  /* ── Main ── */
+  main { max-width:1100px; margin:0 auto; padding:32px; }
+
+  /* ── Panel ── */
+  .panel { display:none; }
+  .panel.active { display:block; }
+
+  /* ── Section card ── */
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:24px 28px; margin-bottom:20px;
+  }
+  .card-title {
+    font-size:14px; font-weight:700; color:var(--olive);
+    letter-spacing:0.1em; text-transform:uppercase;
+    margin-bottom:18px; display:flex; align-items:center; gap:8px;
+  }
+  .card-title::before {
+    content:''; width:3px; height:14px;
+    background:var(--olive); border-radius:2px;
+  }
+
+  /* ── Form ── */
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:12px; color:var(--muted); font-weight:500; letter-spacing:0.06em; }
+  .form-group input, .form-group select, .form-group textarea {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:6px; padding:10px 14px; color:var(--text);
+    font-family:'Noto Sans JP',sans-serif; font-size:14px;
+    transition:border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline:none; border-color:var(--accent);
+  }
+  .form-group textarea { resize:vertical; min-height:72px; }
+
+  .timestamp-preview {
+    background:rgba(0,0,0,0.3); border:1px solid var(--border);
+    border-radius:6px; padding:10px 14px;
+    font-size:13px; color:var(--gold); font-weight:500;
+    display:flex; align-items:center; gap:8px;
+  }
+  .timestamp-preview .ts-label { color:var(--muted); font-size:12px; }
+
+  .btn {
+    padding:10px 24px; border-radius:6px; font-size:14px;
+    font-weight:700; cursor:pointer; border:none;
+    font-family:'Noto Sans JP',sans-serif;
+    transition:all 0.2s; letter-spacing:0.04em;
+  }
+  .btn-primary {
+    background:rgba(232,160,154,0.15); color:var(--accent);
+    border:1px solid var(--accent);
+  }
+  .btn-primary:hover { background:rgba(232,160,154,0.25); }
+  .btn-search {
+    background:rgba(122,143,104,0.15); color:var(--olive);
+    border:1px solid var(--olive);
+  }
+  .btn-search:hover { background:rgba(122,143,104,0.25); }
+  .btn-full { width:100%; margin-top:6px; padding:12px; }
+
+  /* ── Toast ── */
+  .toast {
+    position:fixed; top:80px; right:32px; z-index:999;
+    background:var(--surface); border:1px solid var(--success);
+    border-radius:8px; padding:14px 20px;
+    font-size:13px; color:var(--success);
+    font-weight:500; display:none;
+    box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  }
+  .toast.show { display:block; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── Log table ── */
+  .log-table { width:100%; border-collapse:separate; border-spacing:0; }
+  .log-table th {
+    padding:10px 14px; font-size:11px; font-weight:700;
+    letter-spacing:0.1em; color:var(--muted); text-align:left;
+    border-bottom:1px solid var(--border);
+  }
+  .log-table td {
+    padding:12px 14px; font-size:13px; color:var(--sub);
+    border-bottom:1px solid rgba(74,56,48,0.4);
+    vertical-align:top;
+  }
+  .log-table tr:last-child td { border-bottom:none; }
+  .log-table tr:hover td { background:rgba(255,255,255,0.02); }
+  .lot-badge {
+    display:inline-block; font-size:11px; font-weight:700;
+    padding:2px 10px; border-radius:20px;
+    background:rgba(200,169,110,0.12); color:var(--gold);
+    border:1px solid rgba(200,169,110,0.3);
+  }
+  .process-name { color:var(--text); font-weight:500; }
+  .timestamp-cell { color:var(--muted); font-size:12px; white-space:nowrap; }
+
+  /* ── Search panel ── */
+  .search-row { display:flex; gap:12px; align-items:flex-end; margin-bottom:20px; }
+  .search-row .form-group { flex:1; margin:0; }
+
+  /* ── Result ── */
+  .result-box {
+    background:rgba(0,0,0,0.2); border:1px solid var(--border);
+    border-radius:10px; padding:20px 24px;
+  }
+  .result-title {
+    font-size:14px; font-weight:700; color:var(--accent);
+    margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .timeline { display:flex; flex-direction:column; gap:0; }
+  .tl-item { display:flex; gap:16px; padding:10px 0; position:relative; }
+  .tl-item:not(:last-child)::after {
+    content:''; position:absolute; left:7px; top:32px;
+    width:1px; height:calc(100% - 12px);
+    background:var(--border);
+  }
+  .tl-dot {
+    width:16px; height:16px; border-radius:50%; flex-shrink:0;
+    margin-top:3px; border:2px solid;
+  }
+  .tl-dot.done { background:rgba(106,184,135,0.2); border-color:var(--success); }
+  .tl-dot.inprogress { background:rgba(200,169,110,0.2); border-color:var(--gold); }
+  .tl-dot.new { background:rgba(232,160,154,0.2); border-color:var(--accent); }
+  .tl-body {}
+  .tl-process { font-size:14px; font-weight:600; color:var(--text); margin-bottom:2px; }
+  .tl-time { font-size:12px; color:var(--gold); margin-bottom:2px; }
+  .tl-note { font-size:12px; color:var(--muted); }
+  .tl-tag {
+    display:inline-block; font-size:10px; padding:1px 8px;
+    border-radius:10px; margin-left:6px; font-weight:700;
+  }
+  .tag-ok { background:rgba(106,184,135,0.15); color:var(--success); }
+  .tag-ing { background:rgba(200,169,110,0.15); color:var(--gold); }
+
+  .no-result {
+    text-align:center; padding:32px;
+    font-size:14px; color:var(--muted);
+  }
+
+  /* ── Stats ── */
+  .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .stat-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:18px 20px; text-align:center;
+  }
+  .stat-num { font-size:32px; font-weight:700; color:var(--gold); line-height:1; margin-bottom:4px; }
+  .stat-label { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-title">製造記録管理システム</div>
+    <div class="header-sub">鰹節製造工程トレーサビリティ</div>
+  </div>
+  <div class="header-badge">Claude Code で作成</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('record')">📝 工程記録</div>
+  <div class="tab" onclick="switchTab('track')">🔍 ロット追跡</div>
+  <div class="tab" onclick="switchTab('logs')">📋 記録一覧</div>
+</div>
+
+<main>
+
+  <!-- ── PANEL 1: 工程記録 ── -->
+  <div class="panel active" id="panel-record">
+
+    <div class="card">
+      <div class="card-title">工程を記録する</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>ロット番号</label>
+          <select id="rec-lot">
+            <option value="A-2501">A-2501（本枯れ鰹節）</option>
+            <option value="A-2502">A-2502（本枯れ鰹節）</option>
+            <option value="B-2501">B-2501（荒節）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>担当者</label>
+          <select id="rec-staff">
+            <option>田中 一郎</option>
+            <option>鈴木 花子</option>
+            <option>山田 部長</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px">
+        <label>工程名</label>
+        <select id="rec-process">
+          <option>原料入荷</option>
+          <option>生切り工程</option>
+          <option>煮熟工程</option>
+          <option>骨抜き作業</option>
+          <option>焙乾工程（1回目）</option>
+          <option>焙乾工程（2回目）</option>
+          <option>カビ付け工程（1回目）</option>
+          <option>カビ付け工程（2回目）</option>
+          <option>品質検査</option>
+          <option>出荷</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px">
+        <label>作業内容・備考</label>
+        <textarea id="rec-note" placeholder="例：温度98℃、90分　異常なし"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-bottom:18px">
+        <label>タイムスタンプ（自動付与）</label>
+        <div class="timestamp-preview">
+          <span class="ts-label">記録日時：</span>
+          <span id="ts-display">──</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="addRecord()">
+        ✅ この工程を記録する
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── PANEL 2: ロット追跡 ── -->
+  <div class="panel" id="panel-track">
+
+    <div class="card">
+      <div class="card-title">ロットを追跡する</div>
+
+      <div class="search-row">
+        <div class="form-group">
+          <label>ロット番号を選択</label>
+          <select id="track-lot">
+            <option value="">── 選択してください ──</option>
+            <option value="A-2501">A-2501（本枯れ鰹節）</option>
+            <option value="A-2502">A-2502（本枯れ鰹節）</option>
+            <option value="B-2501">B-2501（荒節）</option>
+          </select>
+        </div>
+        <button class="btn btn-search" onclick="trackLot()">追跡する →</button>
+      </div>
+
+      <div id="track-result">
+        <div class="no-result">ロット番号を選択して追跡してください</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">産地・日付で絞り込む</div>
+      <div class="search-row">
+        <div class="form-group">
+          <label>キーワード</label>
+          <input type="text" id="search-keyword" placeholder="例：焼津、田中、1月10日">
+        </div>
+        <button class="btn btn-search" onclick="searchLots()">検索する →</button>
+      </div>
+      <div id="search-result"></div>
+    </div>
+
+  </div>
+
+  <!-- ── PANEL 3: 記録一覧 ── -->
+  <div class="panel" id="panel-logs">
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">総記録件数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-lots">3</div>
+        <div class="stat-label">管理ロット数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-today">0</div>
+        <div class="stat-label">本日の記録</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">記録一覧</div>
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>ロット</th>
+            <th>工程名</th>
+            <th>担当者</th>
+            <th>備考</th>
+            <th>記録日時</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast">✅ 工程を記録しました</div>
+
+<script>
+// ── サンプルデータ ──
+const sampleData = [
+  { lot:'A-2501', process:'原料入荷',       staff:'田中 一郎', note:'産地：枕崎　漁獲日:1/8　異常なし', time:'2025/01/10 09:00' },
+  { lot:'A-2501', process:'生切り工程',     staff:'田中 一郎', note:'異常なし', time:'2025/01/10 14:00' },
+  { lot:'A-2501', process:'煮熟工程',       staff:'田中 一郎', note:'温度98℃　90分　異常なし', time:'2025/01/11 09:30' },
+  { lot:'A-2501', process:'骨抜き作業',     staff:'田中 一郎', note:'鈴木と2名で作業', time:'2025/01/11 13:00' },
+  { lot:'A-2501', process:'焙乾工程（1回目）', staff:'田中 一郎', note:'温度80℃　8時間', time:'2025/01/12 08:00' },
+  { lot:'A-2501', process:'カビ付け工程（1回目）', staff:'田中 一郎', note:'良好なカビの繁殖を確認', time:'2025/01/15 08:00' },
+  { lot:'A-2501', process:'カビ付け工程（2回目）', staff:'田中 一郎', note:'異常なし', time:'2025/01/20 08:00' },
+  { lot:'A-2501', process:'品質検査',       staff:'山田 部長', note:'合格　水分量14.5%', time:'2025/01/25 10:00' },
+  { lot:'A-2501', process:'出荷',           staff:'鈴木 花子', note:'○○商店へ50本', time:'2025/01/25 14:00' },
+  { lot:'A-2502', process:'原料入荷',       staff:'田中 一郎', note:'産地：焼津　漁獲日:1/16　異常なし', time:'2025/01/18 09:00' },
+  { lot:'A-2502', process:'生切り工程',     staff:'田中 一郎', note:'異常なし', time:'2025/01/18 14:00' },
+  { lot:'A-2502', process:'煮熟工程',       staff:'田中 一郎', note:'温度98℃　90分　異常なし', time:'2025/01/19 09:30' },
+  { lot:'A-2502', process:'焙乾工程（1回目）', staff:'田中 一郎', note:'温度80℃　8時間', time:'2025/01/20 08:00' },
+  { lot:'A-2502', process:'カビ付け工程（1回目）', staff:'田中 一郎', note:'観察中', time:'2025/01/23 08:00' },
+  { lot:'B-2501', process:'原料入荷',       staff:'鈴木 花子', note:'産地：高知　漁獲日:1/3　異常なし', time:'2025/01/05 09:00' },
+  { lot:'B-2501', process:'煮熟工程',       staff:'鈴木 花子', note:'温度98℃　90分', time:'2025/01/06 09:30' },
+  { lot:'B-2501', process:'焙乾工程（1回目）', staff:'鈴木 花子', note:'異常なし', time:'2025/01/07 08:00' },
+  { lot:'B-2501', process:'出荷',           staff:'鈴木 花子', note:'△△スーパーへ40本', time:'2025/01/10 14:00' },
+];
+
+let records = [...sampleData];
+let todayCount = 0;
+
+// ── タイムスタンプ更新 ──
+function updateTimestamp() {
+  const now = new Date();
+  const ts = now.getFullYear() + '/' +
+    String(now.getMonth()+1).padStart(2,'0') + '/' +
+    String(now.getDate()).padStart(2,'0') + ' ' +
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('ts-display').textContent = ts;
+}
+setInterval(updateTimestamp, 1000);
+updateTimestamp();
+
+// ── タブ切り替え ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['record','track','logs'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name === 'logs') renderLogs();
+}
+
+// ── 記録追加 ──
+function addRecord() {
+  const lot     = document.getElementById('rec-lot').value;
+  const process = document.getElementById('rec-process').value;
+  const staff   = document.getElementById('rec-staff').value;
+  const note    = document.getElementById('rec-note').value;
+  const now = new Date();
+  const time = now.getFullYear() + '/' +
+    String(now.getMonth()+1).padStart(2,'0') + '/' +
+    String(now.getDate()).padStart(2,'0') + ' ' +
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0');
+
+  records.unshift({ lot, process, staff, note, time });
+  todayCount++;
+
+  // toast
+  const toast = document.getElementById('toast');
+  toast.textContent = `✅ ${lot}｜${process}　を記録しました`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+
+  document.getElementById('rec-note').value = '';
+}
+
+// ── ロット追跡 ──
+function trackLot() {
+  const lot = document.getElementById('track-lot').value;
+  const resultEl = document.getElementById('track-result');
+  if(!lot) { resultEl.innerHTML = '<div class="no-result">ロット番号を選択してください</div>'; return; }
+
+  const items = records.filter(r => r.lot === lot);
+  if(!items.length) { resultEl.innerHTML = '<div class="no-result">記録が見つかりませんでした</div>'; return; }
+
+  const sorted = [...items].sort((a,b) => a.time.localeCompare(b.time));
+  const isComplete = sorted.some(r => r.process === '出荷');
+
+  let html = `<div class="result-box">
+    <div class="result-title">
+      🔍 ロット ${lot} の製造履歴
+      <span class="tl-tag ${isComplete ? 'tag-ok' : 'tag-ing'}">${isComplete ? '出荷済み' : '製造中'}</span>
+    </div>
+    <div class="timeline">`;
+
+  sorted.forEach((r, i) => {
+    const isLast = i === sorted.length - 1;
+    const dotClass = isComplete ? 'done' : (isLast ? 'inprogress' : 'done');
+    html += `<div class="tl-item">
+      <div class="tl-dot ${dotClass}"></div>
+      <div class="tl-body">
+        <div class="tl-process">${r.process}</div>
+        <div class="tl-time">⏰ ${r.time}　👤 ${r.staff}</div>
+        ${r.note ? `<div class="tl-note">${r.note}</div>` : ''}
+      </div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  resultEl.innerHTML = html;
+}
+
+// ── キーワード検索 ──
+function searchLots() {
+  const kw = document.getElementById('search-keyword').value.toLowerCase();
+  const resultEl = document.getElementById('search-result');
+  if(!kw) { resultEl.innerHTML = ''; return; }
+
+  const hits = records.filter(r =>
+    r.note.toLowerCase().includes(kw) ||
+    r.process.toLowerCase().includes(kw) ||
+    r.staff.toLowerCase().includes(kw) ||
+    r.lot.toLowerCase().includes(kw)
+  );
+
+  if(!hits.length) {
+    resultEl.innerHTML = `<div class="no-result">「${kw}」に一致する記録は見つかりませんでした</div>`;
+    return;
+  }
+
+  const lots = [...new Set(hits.map(r => r.lot))];
+  let html = `<div class="result-box">
+    <div class="result-title">「${kw}」の検索結果：${hits.length}件 / ロット ${lots.length}つ</div>`;
+
+  lots.forEach(lot => {
+    html += `<div style="margin-bottom:12px">
+      <span class="lot-badge">${lot}</span>
+      <div style="margin-top:8px;padding-left:4px">`;
+    hits.filter(r => r.lot === lot).forEach(r => {
+      html += `<div style="font-size:13px;color:var(--sub);padding:4px 0;border-bottom:1px solid rgba(74,56,48,0.3)">
+        <span style="color:var(--text);font-weight:500">${r.process}</span>
+        <span style="color:var(--muted);font-size:12px;margin-left:8px">${r.time}</span>
+        <div style="color:var(--muted);font-size:12px">${r.note}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  resultEl.innerHTML = html;
+}
+
+// ── 記録一覧レンダリング ──
+function renderLogs() {
+  const tbody = document.getElementById('log-tbody');
+  document.getElementById('stat-total').textContent = records.length;
+  document.getElementById('stat-today').textContent = todayCount;
+
+  tbody.innerHTML = records.map(r => `
+    <tr>
+      <td><span class="lot-badge">${r.lot}</span></td>
+      <td><span class="process-name">${r.process}</span></td>
+      <td style="font-size:13px">${r.staff}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.note}</td>
+      <td class="timestamp-cell">${r.time}</td>
+    </tr>
+  `).join('');
+}
+</script>
+</body>
+</html>
